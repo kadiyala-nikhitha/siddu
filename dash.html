@@ -1,0 +1,57 @@
+import dash
+import dash_core_components as dcc
+import dash_html_components as html
+from dash.dependencies import Input, Output
+import requests
+import pandas as pd
+
+# Function to fetch data from the API
+def fetch_data():
+    response = requests.get('http://127.0.0.1:5000/api/data')
+    data = response.json()
+    return pd.DataFrame.from_records(data)
+
+# Initialize the Dash app
+app = dash.Dash(__name__)
+
+# Layout of the dashboard
+app.layout = html.Div(children=[
+    html.H1("Interactive Dashboard"),
+
+    # Interactive components (e.g., dropdowns, sliders)
+    dcc.Dropdown(
+        id='country-dropdown',
+        options=[{'label': country, 'value': country} for country in fetch_data()['Country'].unique()],
+        value='Select Country'
+    ),
+
+    dcc.Graph(id='bar-chart'),
+
+])
+
+# Callback to update the bar chart based on selected country
+@app.callback(
+    Output('bar-chart', 'figure'),
+    [Input('country-dropdown', 'value')]
+)
+def update_chart(selected_country):
+    df = fetch_data()
+    if selected_country == 'Select Country':
+        return {}
+    else:
+        filtered_data = df[df['Country'] == selected_country]
+        # Create an example bar chart using Plotly
+        figure = {
+            'data': [
+                {'x': filtered_data['Topics'], 'y': filtered_data['End Year'], 'type': 'bar', 'name': 'End Year'},
+            ],
+            'layout': {
+                'title': f'End Year Distribution for {selected_country}',
+                'xaxis': {'title': 'Topics'},
+                'yaxis': {'title': 'End Year'},
+            }
+        }
+        return figure
+
+if __name__ == '__main__':
+    app.run_server(debug=True)
